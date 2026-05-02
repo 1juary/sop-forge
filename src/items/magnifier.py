@@ -33,16 +33,26 @@ class DraggableNode(SmartGraphicItemMixin, QGraphicsEllipseItem):
         # 彻底关闭该取景框的移动磁吸功能，保证丝滑取景
         self._disable_snap = True
 
+    def boundingRect(self):
+        # 扩展 10 像素的包围盒，确保外围控制柄不会被裁剪
+        return self.rect().adjusted(-10, -10, 10, 10)
+
+    def shape(self):
+        # 核心修复：用整体矩形替代默认的椭圆判定，防止角落把手点击穿透
+        path = QPainterPath()
+        path.addRect(self.boundingRect())
+        return path
+
     def _get_handles(self):
-        """返回 5 个控制点的矩形热区字典"""
+        """返回 5 个控制点的矩形热区字典 (扩大判定区)"""
         hw = self.rect().width() / 2
         hh = self.rect().height() / 2
         return {
-            "corner": QRectF(hw - 8, hh - 8, 16, 16),  # 右下角等比缩放
-            "right": QRectF(hw - 5, -5, 10, 10),       # 右边缘单向
-            "bottom": QRectF(-5, hh - 5, 10, 10),      # 下边缘单向
-            "left": QRectF(-hw - 5, -5, 10, 10),       # 左边缘单向
-            "top": QRectF(-5, -hh - 5, 10, 10),        # 上边缘单向
+            "corner": QRectF(hw - 10, hh - 10, 20, 20),
+            "right": QRectF(hw - 10, -10, 20, 20),
+            "bottom": QRectF(-10, hh - 10, 20, 20),
+            "left": QRectF(-hw - 10, -10, 20, 20),
+            "top": QRectF(-10, -hh - 10, 20, 20)
         }
 
     def hoverMoveEvent(self, event):
@@ -75,39 +85,33 @@ class DraggableNode(SmartGraphicItemMixin, QGraphicsEllipseItem):
 
     def mouseMoveEvent(self, event):
         if getattr(self, '_resize_mode', None):
-            hw, hh = self.rect().width() / 2, self.rect().height() / 2
             pos = event.pos()
-
-            # 根据不同的控制点计算宽高
+            hw = self.rect().width() / 2
+            hh = self.rect().height() / 2
+            
             if self._resize_mode == "corner":
-                hw = max(15.0, pos.x())
+                hw = max(15.0, abs(pos.x()))
                 hh = hw * getattr(self, '_aspect_ratio', 1.0)
-            elif self._resize_mode == "right":
-                hw = max(15.0, pos.x())
-            elif self._resize_mode == "bottom":
-                hh = max(15.0, pos.y())
-            elif self._resize_mode == "left":
-                hw = max(15.0, -pos.x())
-            elif self._resize_mode == "top":
-                hh = max(15.0, -pos.y())
+            elif self._resize_mode == "right": hw = max(15.0, abs(pos.x()))
+            elif self._resize_mode == "bottom": hh = max(15.0, abs(pos.y()))
+            elif self._resize_mode == "left": hw = max(15.0, abs(pos.x()))
+            elif self._resize_mode == "top": hh = max(15.0, abs(pos.y()))
 
             self.prepareGeometryChange()
             self.setRect(-hw, -hh, hw * 2, hh * 2)
-
-            # 【双向同步】同步更新关联的 LensItem
-            if self.scene():
-                for other in self.scene().items():
-                    if type(other).__name__ == "LensItem" and getattr(other, 'source', None) == self:
-                        zoom = other.zoom_factor
-                        other.prepareGeometryChange()
-                        other.setRect(-hw * zoom, -hh * zoom, hw * 2 * zoom, hh * 2 * zoom)
-                        other.update()
-
+            
+            # 【同步给 LensItem】
+            for other in self.scene().items():
+                if type(other).__name__ == "LensItem" and getattr(other, 'source', None) == self:
+                    zoom = other.zoom_factor
+                    other.prepareGeometryChange()
+                    other.setRect(-hw * zoom, -hh * zoom, hw * 2 * zoom, hh * 2 * zoom)
+                    other.update()
+                    
             self.update()
-            if self.scene():
-                self.scene().update()
+            if self.scene(): self.scene().update()
             event.accept()
-        else:
+        else: 
             super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
@@ -170,16 +174,26 @@ class LensItem(SmartGraphicItemMixin, QGraphicsEllipseItem):
     def set_cone(self, cone_item):
         self._cone = cone_item
 
+    def boundingRect(self):
+        # 扩展 10 像素的包围盒，确保外围控制柄不会被裁剪
+        return self.rect().adjusted(-10, -10, 10, 10)
+
+    def shape(self):
+        # 核心修复：用整体矩形替代默认的椭圆判定，防止角落把手点击穿透
+        path = QPainterPath()
+        path.addRect(self.boundingRect())
+        return path
+
     def _get_handles(self):
-        """返回 5 个控制点的矩形热区字典"""
+        """返回 5 个控制点的矩形热区字典 (扩大判定区)"""
         hw = self.rect().width() / 2
         hh = self.rect().height() / 2
         return {
-            "corner": QRectF(hw - 8, hh - 8, 16, 16),  # 右下角等比缩放
-            "right": QRectF(hw - 5, -5, 10, 10),       # 右边缘单向
-            "bottom": QRectF(-5, hh - 5, 10, 10),      # 下边缘单向
-            "left": QRectF(-hw - 5, -5, 10, 10),       # 左边缘单向
-            "top": QRectF(-5, -hh - 5, 10, 10),        # 上边缘单向
+            "corner": QRectF(hw - 10, hh - 10, 20, 20),
+            "right": QRectF(hw - 10, -10, 20, 20),
+            "bottom": QRectF(-10, hh - 10, 20, 20),
+            "left": QRectF(-hw - 10, -10, 20, 20),
+            "top": QRectF(-10, -hh - 10, 20, 20)
         }
 
     def hoverMoveEvent(self, event):
@@ -212,38 +226,32 @@ class LensItem(SmartGraphicItemMixin, QGraphicsEllipseItem):
 
     def mouseMoveEvent(self, event):
         if getattr(self, '_resize_mode', None):
-            hw, hh = self.rect().width() / 2, self.rect().height() / 2
             pos = event.pos()
-
-            # 根据不同的控制点计算宽高
+            hw = self.rect().width() / 2
+            hh = self.rect().height() / 2
+            
             if self._resize_mode == "corner":
-                hw = max(15.0, pos.x())
+                hw = max(15.0, abs(pos.x()))
                 hh = hw * getattr(self, '_aspect_ratio', 1.0)
-            elif self._resize_mode == "right":
-                hw = max(15.0, pos.x())
-            elif self._resize_mode == "bottom":
-                hh = max(15.0, pos.y())
-            elif self._resize_mode == "left":
-                hw = max(15.0, -pos.x())
-            elif self._resize_mode == "top":
-                hh = max(15.0, -pos.y())
+            elif self._resize_mode == "right": hw = max(15.0, abs(pos.x()))
+            elif self._resize_mode == "bottom": hh = max(15.0, abs(pos.y()))
+            elif self._resize_mode == "left": hw = max(15.0, abs(pos.x()))
+            elif self._resize_mode == "top": hh = max(15.0, abs(pos.y()))
 
             self.prepareGeometryChange()
             self.setRect(-hw, -hh, hw * 2, hh * 2)
-
-            # 【双向同步】同步更新关联的 DraggableNode (source)
-            if self.source and self.zoom_factor > 0:
-                sw = hw / self.zoom_factor
-                sh = hh / self.zoom_factor
+            
+            # 【同步给 DraggableNode (Source)】
+            if self.source:
+                zoom = self.zoom_factor
                 self.source.prepareGeometryChange()
-                self.source.setRect(-sw, -sh, sw * 2, sh * 2)
+                self.source.setRect(-hw / zoom, -hh / zoom, (hw * 2) / zoom, (hh * 2) / zoom)
                 self.source.update()
-
+                
             self.update()
-            if self.scene():
-                self.scene().update()
+            if self.scene(): self.scene().update()
             event.accept()
-        else:
+        else: 
             super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
