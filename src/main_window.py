@@ -17,11 +17,11 @@ from PySide6.QtGui import (
 from PySide6.QtCore import Qt, QRectF
 
 from src.theme import GLOBAL_QSS
-from src.scene import SOPCanvasScene
-from src.view import SOPCanvasView
-from src.panels.component_panel import ComponentPanel
-from src.panels.property_panel import PropertyPanel
-from src.panels.emoji_panel import EmojiPanel
+from src.scene import SOPCanvasScene # 负责管理数据的“幕后数据源”
+from src.view import SOPCanvasView # 负责用户交互的“前台窗口”，直接与用户操作绑定
+from src.panels.component_panel import ComponentPanel #（组件面板），提供大标题、正文、图片等基础元素的拖拽或点击入口
+from src.panels.property_panel import PropertyPanel #属性面板，用于调节大小、颜色等
+from src.panels.emoji_panel import EmojiPanel #表情面板
 from src.io.serialization import export_to_json, import_from_json
 from src.io.pdf_export import export_to_pdf
 from src.items.text_item import SOPTextItem
@@ -46,7 +46,7 @@ class MainWindow(QMainWindow):
         self.setup_menu()
         self.setup_toolbar()
         self.setup_statusbar()
-        self.setup_connections()
+        self.setup_connections() # 信号与槽链接
         self.setStyleSheet(GLOBAL_QSS)
 
     def setup_scene(self):
@@ -404,9 +404,9 @@ class MainWindow(QMainWindow):
         item.setSelected(True)
         self.statusbar.showMessage("已添加图片")
 
-    def _add_component_at(self, component_type, scene_pos=None):
+    def _add_component_at(self, component_type, scene_pos=None): #工厂模式函数
         if scene_pos is None:
-            scene_pos = self.view.mapToScene(self.view.viewport().rect().center())
+            scene_pos = self.view.mapToScene(self.view.viewport().rect().center()) # 如果没有指定位置，默认放在视图中心。mapToScene 将视口坐标转换为场景坐标，确保组件出现在用户当前看到的位置。
 
         item = None
         if component_type in ["title", "body", "caption"]:
