@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-全局多巴胺 QSS 样式定义
+全局多巴胺 Qt Style Sheets（Qt 样式表） 样式定义
+键值对格式
 """
 
 GLOBAL_QSS = """

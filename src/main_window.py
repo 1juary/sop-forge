@@ -40,8 +40,8 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(1200, 800)
         self.resize(1400, 900)
         self._current_file = None
-        self.setup_scene()
-        self.setup_view()
+        self.setup_scene() #存储数据
+        self.setup_view() #看画面
         self.setup_panels()
         self.setup_menu()
         self.setup_toolbar()
