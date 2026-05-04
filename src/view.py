@@ -122,18 +122,19 @@ class SOPCanvasView(QGraphicsView):
                         if getattr(other, 'source', None) == i and getattr(other, '_cone', None):
                             other._cone.setZValue(min_z - 1.1)
 
-        action_top = menu.addAction("⬆ 置于顶层")
-        action_top.triggered.connect(bring_to_front)
+        action_top = menu.addAction("⬆ 置于顶层")  #在一张白纸上画了一个按钮，并且给它贴上了文本标签
+        action_top.triggered.connect(bring_to_front) #把鼠标给按钮的信号，绑定到函数上
 
         action_bottom = menu.addAction("⬇ 置于底层")
         action_bottom.triggered.connect(send_to_back)
 
-        menu.addSeparator()
+        #在右键菜单里画一条横向的灰色细线。把“置顶/置底”这类图层操作，与“冻结/解冻”这类状态操作在视觉上隔开，让菜单看起来更专业、更有条理。
+        menu.addSeparator() 
         # 冻结/解冻
-        all_frozen = all(getattr(i, '_is_frozen', False) for i in items)
+        all_frozen = all(getattr(i, '_is_frozen', False) for i in items)  #all() 是 Python 的内置函数。它会检查一个列表里的所有元素，只有当里面所有的元素全都是 True 时，它才返回 True。只要混进去哪怕一个 False，它立刻返回 False。
         if all_frozen:
-            action_unfreeze = menu.addAction("📍 解冻")
-            action_unfreeze.triggered.connect(lambda: self._toggle_freeze(items, False))
+            action_unfreeze = menu.addAction("📍 解冻")  #如果刚才的判定结果是“全都被冻结了”。那么菜单里就只显示“解冻”按钮。
+            action_unfreeze.triggered.connect(lambda: self._toggle_freeze(items, False)) #要调用的真实函数是 self._toggle_freeze(items, True)，它需要知道冻结哪些东西（items）和设置成什么状态（True/False）。这里lambda函数是“没有名字、只有一行、用完即抛”的微型函数
         else:
             action_freeze = menu.addAction("📌 冻结")
             action_freeze.triggered.connect(lambda: self._toggle_freeze(items, True))
