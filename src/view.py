@@ -143,50 +143,55 @@ class SOPCanvasView(QGraphicsView):
         # 组合/取消组合
         if len(items) > 1:
             action_group = menu.addAction("🔗 组合选区")
-            action_group.triggered.connect(lambda: self.window()._group_items())
-        elif len(items) == 1 and isinstance(items[0], SOPGroupItem):
+            action_group.triggered.connect(lambda: self.window()._group_items())  #这里是调用 self.window()._group_items()，而不是在视图（View）内部处理。
+        elif len(items) == 1 and isinstance(items[0], SOPGroupItem):  #如果选中的组件有且仅有 1 个，并且它的真实身份是一个“组合体”
             action_ungroup = menu.addAction("💔 取消组合")
             action_ungroup.triggered.connect(lambda: self.window()._ungroup_items(items[0]))
 
         menu.addSeparator()
         action_delete = menu.addAction("🗑 删除")
-        action_delete.triggered.connect(lambda: self.window()._on_delete())
+        action_delete.triggered.connect(lambda: self.window()._on_delete())  #view 里没有删除组件的能力，它需要把这个命令传递给主窗口（MainWindow）来执行真正的删除逻辑。
 
-        menu.exec(event.globalPos())
+        #exec是阻塞式事件循环，启动了局部的事件循环把当前函数的执行阻塞，等到右键的菜单结束后，才会结束
+        menu.exec(event.globalPos())  #event.globalPos() 获取鼠标点击时的全局屏幕坐标（真实的电脑物理显示器屏幕），确保菜单出现在正确的位置。
 
     def _set_top_z(self, items):
-        max_z = max([i.zValue() for i in self.scene().items()]) + 1
+        max_z = max([i.zValue() for i in self.scene().items()] + [0]) + 1
         for i in items:
             i.setZValue(max_z)
 
     def _set_bottom_z(self, items):
-        min_z = min([i.zValue() for i in self.scene().items()]) - 1
+        min_z = min([i.zValue() for i in self.scene().items()] + [0]) - 1
         for i in items:
             i.setZValue(min_z)
 
     def _toggle_freeze(self, items, freeze):
         for i in items:
+            #在 Qt 框架中，一个图形能不能被鼠标拖着走，完全由 `ItemIsMovable` 这个底层 Flag（标志位）决定。
             i.setFlag(QGraphicsItem.ItemIsMovable, not freeze)
-            i._is_frozen = freeze
-        self.scene().update()
+            i._is_frozen = freeze  #在组件身上打上一个自定义的“烙印”（状态变量）
+        self.scene().update()  #强制刷新视觉表现 (渲染层)
 
     def zoom_in(self):
-        self.wheelEvent(self._make_wheel_event(120))
+        self.wheelEvent(self._make_wheel_event(120))  #`_make_wheel_event`**：这是一个辅助函数（在这段代码外定义的），用来凭空“捏造”一个 Qt 的鼠标滚轮事件对象（`QWheelEvent`）。
 
     def zoom_out(self):
         self.wheelEvent(self._make_wheel_event(-120))
 
     def zoom_fit(self):
-        self._zoom = 1.0
-        self.resetTransform()
-        self.centerOn(self.sceneRect().center())
-
+        self._zoom = 1.0  #把你之前在代码里用来记账的变量（比如已经放大到了 3.5 倍）强行清零，恢复为默认的 1 倍。
+        self.resetTransform()  #强行恢复成一个“单位矩阵（Identity Matrix）,所有扭曲、缩放瞬间烟消云散，回归最原始的 1:1 像素映射。
+        self.centerOn(self.sceneRect().center())  #去内存里找到整个舞台（Scene）的绝对物理中心点坐标。 瞬间拉动隐藏的滚动条，把你的视口（摄像机）精准地对齐到刚才算出来的那个舞台中心点。
+   
+    #事件伪造
     def _make_wheel_event(self, delta):
-        pos = self.viewport().mapFromGlobal(QCursor.pos())
-        return QWheelEvent(pos, self.mapToScene(pos), QPoint(delta, 0), QPoint(0, 0), Qt.NoButton, Qt.NoModifier, Qt.NoScrollPhase, False)
+        pos = self.viewport().mapFromGlobal(QCursor.pos())  #获取当前鼠标指针在画布（Viewport）内部的局部坐标,先获取鼠标在屏幕上的全局坐标，再呼叫当前viewport()转换成A4画面上的坐标。
+        return QWheelEvent(pos, self.mapToScene(pos), QPoint(delta, 0), QPoint(0, 0), Qt.NoButton, Qt.NoModifier, Qt.NoScrollPhase, False)  #严格按照 Qt C++ 底层要求的格式，填满一张包含 8 个参数的“滚轮事件表单”
 
+    #在 Qt 中，完整的拖拽动作分为三步：**进入 (Enter) -> 移动 (Move) -> 松开/放下 (Drop)**。
+    #当鼠标拖着某样东西，**刚好越过软件窗口边界、进入画布**的那一瞬间，触发此事件。
     def dragEnterEvent(self, event):
-        mime = event.mimeData()
+        mime = event.mimeData()  #MIME (Multipurpose Internet Mail Extensions)
         if mime.hasText() or mime.hasUrls() or mime.hasImage():
             event.acceptProposedAction()
 
